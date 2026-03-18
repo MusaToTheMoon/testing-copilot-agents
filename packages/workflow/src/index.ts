@@ -47,7 +47,7 @@ export function getPreviousStage(stage: WorkflowStage): WorkflowStage | null {
     "EXPORTED",
   ];
   const idx = STAGE_ORDER.indexOf(stage);
-  return idx > 0 ? STAGE_ORDER[idx - 1] ?? null : null;
+  return idx > 0 ? STAGE_ORDER[idx - 1]! : null;
 }
 
 export const STAGE_LABELS: Record<WorkflowStage, string> = {

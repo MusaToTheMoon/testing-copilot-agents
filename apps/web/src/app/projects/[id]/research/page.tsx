@@ -10,7 +10,11 @@ import { SourceCard } from "@/components/project/SourceCard";
 import { FeedbackPanel } from "@/components/project/FeedbackPanel";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { searchResearch, approveSource, deleteSource } from "@/lib/api";
+import type { SourceDocument } from "@essay-app/types";
+import { searchResearch, uploadSource, approveSource, deleteSource } from "@/lib/api";
+
+// Search results returned from the LLM before they are saved to the project
+type SearchResult = Omit<SourceDocument, "id" | "projectId" | "createdAt" | "approved" | "summary">;
 
 export default function ResearchPage() {
   const params = useParams<{ id: string }>();
@@ -18,7 +22,8 @@ export default function ResearchPage() {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<typeof sources>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [addingIndex, setAddingIndex] = useState<number | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,11 +32,25 @@ export default function ResearchPage() {
     setSearchError(null);
     try {
       const result = await searchResearch(params.id, query);
-      setSearchResults((result.data?.sources as typeof sources) ?? []);
+      setSearchResults((result.data?.sources as SearchResult[]) ?? []);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Search failed");
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleAddToProject = async (source: SearchResult, idx: number) => {
+    setAddingIndex(idx);
+    try {
+      await uploadSource(params.id, source);
+      // Remove the result from search list so the user knows it was added
+      setSearchResults((prev) => prev.filter((_, i) => i !== idx));
+      await refetch();
+    } catch (err) {
+      console.error("Failed to add source:", err);
+    } finally {
+      setAddingIndex(null);
     }
   };
 
@@ -104,10 +123,28 @@ export default function ResearchPage() {
                 <div className="mt-4 space-y-3">
                   <h3 className="text-sm font-medium text-gray-700">Search Results</h3>
                   {searchResults.map((source, idx) => (
-                    <SourceCard
-                      key={idx}
-                      source={{ ...source, id: source.id ?? `search-${idx}`, approved: false }}
-                    />
+                    <div key={`${source.title}-${idx}`} className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{source.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {source.authors.join(", ")}
+                            {source.year ? ` (${source.year})` : ""}
+                          </p>
+                          {source.abstract && (
+                            <p className="text-xs text-gray-600 mt-2 line-clamp-2">{source.abstract}</p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          isLoading={addingIndex === idx}
+                          onClick={() => void handleAddToProject(source, idx)}
+                        >
+                          Add to Project
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

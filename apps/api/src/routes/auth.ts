@@ -25,7 +25,7 @@ function createToken(userId: string): string {
   const secret = process.env["JWT_SECRET"];
   if (!secret) throw new AppError(500, "JWT secret not configured");
   const expiresIn = process.env["JWT_EXPIRES_IN"] ?? "7d";
-  return jwt.sign({ userId }, secret, { expiresIn } as jwt.SignOptions);
+  return jwt.sign({ userId }, secret, { expiresIn });
 }
 
 function setCookieToken(res: import("express").Response, token: string): void {
