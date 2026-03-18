@@ -1,0 +1,175 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  passwordHash  String?
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  projects EssayProject[]
+  sessions Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model EssayProject {
+  id              String    @id @default(cuid())
+  userId          String
+  title           String
+  prompt          String
+  essayType       String
+  targetWordCount Int
+  citationStyle   String
+  tone            String
+  formalityLevel  Int       @default(3)
+  stage           String    @default("CREATED")
+  dueDate         DateTime?
+  rubric          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources         SourceDocument[]
+  thesisVersions  ThesisVersion[]
+  outlineVersions OutlineVersion[]
+  sectionDrafts   SectionDraft[]
+  comments        FeedbackComment[]
+  generationRuns  GenerationRun[]
+  exports         ExportArtifact[]
+
+  @@index([userId])
+}
+
+model SourceDocument {
+  id             String   @id @default(cuid())
+  projectId      String
+  title          String
+  authors        String[]
+  year           Int?
+  type           String
+  url            String?
+  doi            String?
+  abstract       String?
+  summary        String?
+  relevanceScore Float?
+  approved       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ThesisVersion {
+  id                  String   @id @default(cuid())
+  projectId           String
+  thesis              String
+  supportingArguments String[]
+  counterarguments    String[]
+  evidenceLinks       String[]
+  claimSourceMapping  Json     @default("[]")
+  conclusionIntent    String
+  approved            Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model OutlineVersion {
+  id        String   @id @default(cuid())
+  projectId String
+  sections  Json
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model SectionDraft {
+  id              String   @id @default(cuid())
+  projectId       String
+  sectionId       String
+  sectionName     String
+  content         String
+  wordCount       Int      @default(0)
+  targetWordCount Int      @default(0)
+  approved        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model FeedbackComment {
+  id           String   @id @default(cuid())
+  projectId    String
+  artifactType String
+  artifactId   String
+  content      String
+  resolved     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model GenerationRun {
+  id               String   @id @default(cuid())
+  projectId        String
+  taskType         String
+  provider         String
+  model            String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  cost             Float    @default(0)
+  latencyMs        Int      @default(0)
+  success          Boolean  @default(true)
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ExportArtifact {
+  id        String   @id @default(cuid())
+  projectId String
+  format    String
+  url       String?
+  content   String?
+  createdAt DateTime @default(now())
+
+  project EssayProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
